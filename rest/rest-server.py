@@ -1,6 +1,7 @@
 from flask import Flask, request, Response
 import jsonpickle
 import pika
+import uuid
 
 app = Flask(__name__)
 
@@ -20,9 +21,9 @@ def retailerOnboard():
         s = 501
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
-    #create uuid
+    curr_uuid =  str(uuid.uuid4())
     #save to mysql: uuid, name, location
-    response = {'retailerId': uuid}
+    response = {'retailerId': curr_uuid}
     response_pickled = jsonpickle.encode(response)
     s = 200
     return Response(response=response_pickled, status=s, mimetype="application/json")
@@ -43,9 +44,9 @@ def producerOnboard():
         s = 501
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
-    #create uuid
+    curr_uuid =  str(uuid.uuid4())
     #save to mysql: uuid, name, location
-    response = {'producerid': uuid}
+    response = {'producerid': curr_uuid}
     response_pickled = jsonpickle.encode(response)
     s = 200
     return Response(response=response_pickled, status=s, mimetype="application/json")
@@ -69,15 +70,14 @@ def retailerDemand():
         s = 501
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
-    #create uuid
-    #connect to rabbitmq
+    curr_uuid =  str(uuid.uuid4())
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='35.196.120.94'))
     channel = connection.channel()
     channel.exchange_declare(exchange='toWorker', exchange_type='direct')
-    channel.basic_publish(exchange='toWorker', routing_key='retailer_demand', body=,properties=pika.BasicProperties(delivery_mode = 2))
+    q_data = {'requestId': curr_uuid, 'retailerId': retailerId, 'foodId': fodId, 'foodName': foodName, 'price': price, 'quantity':quantity}
+    channel.basic_publish(exchange='toWorker', routing_key='retailer_demand', body=q_data,properties=pika.BasicProperties(delivery_mode = 2))
     connection.close()
-    #push to rabbitmq: uuid, retailerId, foodId, foodName, price, quantity
-    response = {'requestId': uuid}
+    response = {'requestId': curr_uuid}
     response_pickled = jsonpickle.encode(response)
     s = 200
     return Response(response=response_pickled, status=s, mimetype="application/json")
@@ -99,10 +99,14 @@ def producerDemand():
         s = 501
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
-    #create uuid
-    #connect to rabbitmq
-    #push to rabbitmq: uuid, producerId, foodId, quantity
-    response = {'requestId': uuid}
+    curr_uuid =  str(uuid.uuid4())
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='35.196.120.94'))
+    channel = connection.channel()
+    channel.exchange_declare(exchange='toWorker', exchange_type='direct')
+    q_data = {'requestId': curr_uuid, 'producerId': producerId, 'foodId': fodId, 'foodName': foodName, 'quantity':quantity}
+    channel.basic_publish(exchange='toWorker', routing_key='producer_demand', body=q_data,properties=pika.BasicProperties(delivery_mode = 2))
+    connection.close()
+    response = {'requestId': curr_uuid}
     response_pickled = jsonpickle.encode(response)
     s = 200
     return Response(response=response_pickled, status=s, mimetype="application/json")
@@ -184,9 +188,9 @@ def addFood():
         s = 501
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
-    #create uuid
+    curr_uuid =  str(uuid.uuid4())
     #store in mysql: foodId, foodName
-    response = {'foodId': uuid}
+    response = {'foodId': curr_uuid}
     response_pickled = jsonpickle.encode(response)
     s = 200
     return Response(response=response_pickled, status=s, mimetype="application/json")
@@ -211,4 +215,6 @@ if __name__ == '__main__':
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='35.247.11.169'))
     channel = connection.channel()
     channel.exchange_declare(exchange='toWorker', exchange_type='direct')
+    result = channel.queue_declare(queue='', exclusive=True)
+    queue_name = result.method.queue
     app.run(host='0.0.0.0')

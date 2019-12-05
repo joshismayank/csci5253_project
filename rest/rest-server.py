@@ -3,8 +3,13 @@ import jsonpickle
 import pika
 import uuid
 import pymysql
+import logging
+import google.cloud.logging
 
 app = Flask(__name__)
+
+client = google.cloud.logging.Client()
+client.setup_logging()
 
 connection = pymysql.connect(host='127.0.0.1',user='cluster_user',password='datacenter',db='dc_project')
 cursor = connection.cursor()
@@ -27,13 +32,15 @@ def retailerOnboard():
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
     curr_uuid =  str(uuid.uuid4())
-    query = """insert into retailer(id,name,location) values(curr_uuid,name,location)"""
+    query = """insert into retailer(id,name,location) values(%s,%s,%s)"""
     try:
-        cursor.execute(query)
+        cursor.execute(query,(curr_uuid,name,location))
         connection.commit()
         response = {'retailerId': curr_uuid}
         s = 200
-    except:
+    except MySQLError as e:
+        curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
+        logging.warning(curr_err)
         connection.rollback()
         response = {'retailerId': ''}
         s = 501
@@ -59,13 +66,15 @@ def producerOnboard():
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
     curr_uuid =  str(uuid.uuid4())
-    query = """insert into producer(id,name,location) values(curr_uuid,name,location)"""
+    query = """insert into producer(id,name,location) values(%s,%s,%s)"""
     try:
-        cursor.execute(query)
+        cursor.execute(query,(curr_uuid,name,location))
         connection.commit()
         response = {'producerId': curr_uuid}
         s = 200
-    except:
+    except MySQLError as e:
+        curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
+        logging.warning(curr_err)
         connection.rollback()
         response = {'producerId': ''}
         s = 501
@@ -75,8 +84,6 @@ def producerOnboard():
 
 @app.route('/api/retailer/demand', methods=['POST'])                                                                              
 def retailerDemand():
-    global cursor
-    global connection
     data = request.get_json(silent=True)
     if data is None:
         response = { 'requestId' : ''}
@@ -108,8 +115,6 @@ def retailerDemand():
 
 @app.route('/api/producer/demand', methods=['POST'])                                                                              
 def producerDemand():
-    global cursor
-    global connection
     data = request.get_json(silent=True)
     if data is None:
         response = { 'requestId' : ''}
@@ -148,9 +153,9 @@ def getRetailerDemand():
         s = 501
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
-    query = """select * from acceptedRequests where requestBy = 'r' and isActive = 1 and requestUserId = retailerId"""
+    query = """select * from acceptedRequests where requestBy = 'r' and isActive = 1 and requestUserId = %s"""
     try:
-        cursor.execute(query)
+        cursor.execute(query,(retailerId))
         results = cursor.fetchall()
         response = []
         for row in results:
@@ -162,7 +167,9 @@ def getRetailerDemand():
             temp_res = {'foodId': foodId, 'foodName': foodName, 'quantity': quantity, 'price': price, 'createdAt': createdAt}
             response.append(temp_res)
         s = 200
-    except:
+    except MySQLError as e:
+        curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
+        logging.warning(curr_err)
         response = [{'foodId': '', 'foodName': '', 'quantity': '', 'price': '', 'createdAt': ''}]
         s = 501
     response_pickled = jsonpickle.encode(response)
@@ -180,9 +187,9 @@ def getProducerDemand():
         s = 501
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
-    query = """select * from acceptedRequests where requestBy = 'p' and isActive = 1 and requestUserId = producerId"""
+    query = """select * from acceptedRequests where requestBy = 'p' and isActive = 1 and requestUserId = %s"""
     try:
-        cursor.execute(query)
+        cursor.execute(query,(producerId))
         results = cursor.fetchall()
         response = []
         for row in results:
@@ -194,7 +201,9 @@ def getProducerDemand():
             temp_res = {'foodId': foodId, 'foodName': foodName, 'quantity': quantity, 'price': price, 'createdAt': createdAt}
             response.append(temp_res)
         s = 200
-    except:
+    except MySQLError as e:
+        curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
+        logging.warning(curr_err)
         response = [{'foodId': '', 'foodName': '', 'quantity': '', 'price': '', 'createdAt': ''}]
         s = 501
     response_pickled = jsonpickle.encode(response)
@@ -217,7 +226,9 @@ def getRetailers():
             temp_res = {'retailerId': retailerId, 'name': name, 'location': location}
             response.append(temp_res)
         s = 200
-    except:
+    except MySQLError as e:
+        curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
+        logging.warning(curr_err)
         response = [{'retailerId': '', 'name': '', 'location': ''}]
         s = 501
     response_pickled = jsonpickle.encode(response)
@@ -240,7 +251,9 @@ def getProducers():
             temp_res = {'producerId': producerId, 'name': name, 'location': location}
             response.append(temp_res)
         s = 200
-    except:
+    except MySQLError as e:
+        curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
+        logging.warning(curr_err)
         response = [{'producerId': '', 'name': '', 'location': ''}]
         s = 501
     response_pickled = jsonpickle.encode(response)
@@ -262,11 +275,13 @@ def getRetailerDemands():
             quantity = row[2]
             price = row[3]
             createdAt = row[5]
-            retailerId = row[7]
+            retailerId = row[8]
             temp_res = {'foodId': foodId, 'foodName': foodName, 'quantity': quantity, 'price': price, 'retailerId':retailerId, 'createdAt': createdAt}
             response.append(temp_res)
         s = 200
-    except:
+    except MySQLError as e:
+        curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
+        logging.warning(curr_err)
         response = [{'foodId': '', 'foodName': '', 'quantity': '', 'price': '', 'retailerId': '', 'createdAt': ''}]
         s = 501
     response_pickled = jsonpickle.encode(response)
@@ -288,11 +303,13 @@ def getProducerDemands():
             quantity = row[2]
             price = row[3]
             createdAt = row[5]
-            producerId = row[7]
+            producerId = row[8]
             temp_res = {'foodId': foodId, 'foodName': foodName, 'quantity': quantity, 'price': price, 'producerId':producerId, 'createdAt': createdAt}
             response.append(temp_res)
         s = 200
-    except:
+    except MySQLError as e:
+        curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
+        logging.warning(curr_err)
         response = [{'foodId': '', 'foodName': '', 'quantity': '', 'price': '', 'producerId': '', 'createdAt': ''}]
         s = 501
     response_pickled = jsonpickle.encode(response)
@@ -310,13 +327,15 @@ def addFood():
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
     curr_uuid =  str(uuid.uuid4())
-    query = """insert into food(id,name) values(curr_uuid,foodName)"""
+    query = """insert into food(id,name) values(%s,%s)"""
     try:
-        cursor.execute(query)
+        cursor.execute(query,(curr_uuid,foodName))
         connection.commit()
         response = {'foodId': curr_uuid}
         s = 200
-    except:
+    except MySQLError as e:
+        curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
+        logging.warning(curr_err)
         connection.rollback()
         response = {'foodId': ''}
         s = 501
@@ -325,7 +344,7 @@ def addFood():
 
 
 @app.route('/api/user/food', methods=['GET'])                                                                              
-def addFood():
+def getFood():
     global cursor
     global connection
     foodName = request.args.get('foodName')
@@ -334,11 +353,10 @@ def addFood():
         s = 501
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
-    #query in mysql: foodName, isActive
     foodName = foodName+'%'
-    query = """select * from food where name like foodName and isActive = 1"""
+    query = """select * from food where name like %s and isActive = 1"""
     try:
-        cursor.execute(query)
+        cursor.execute(query,(foodName))
         results = cursor.fetchall()
         response = []
         for row in results:
@@ -348,7 +366,9 @@ def addFood():
             temp_res = {'foodId': foodId, 'foodName': foodName, 'createdAt': createdAt}
             response.append(temp_res)
         s = 200
-    except:
+    except MySQLError as e:
+        curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
+        logging.warning(curr_err)
         response = [{'foodId': '', 'foodName': '', 'createdAt': ''}]
         s = 501
     response_pickled = jsonpickle.encode(response)

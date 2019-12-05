@@ -24,8 +24,12 @@ def retailerOnboard():
         s = 501
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
-    name = data['name']
-    location = data['location']
+    name = None
+    location = None
+    if 'name' in data:
+        name = data['name']
+    if 'location' in data:
+        location = data['location']
     if name is None or location is None:
         response = { 'retailerId' : ''}
         s = 501
@@ -58,8 +62,12 @@ def producerOnboard():
         s = 501
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
-    name = data['name']
-    location = data['location']
+    name = None
+    location = None
+    if 'name' in data:
+        name = data['name']
+    if 'location' in data:
+        location = data['location']
     if name is None or location is None:
         response = { 'producerId' : ''}
         s = 501
@@ -90,21 +98,31 @@ def retailerDemand():
         s = 501
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
-    retailerId = data['retailerId']
-    foodId = data['foodId']
-    foodName = data['foodName']
-    price = data['price']
-    quantity = data['quantity']
+    retailerId = None
+    foodId = None
+    foodName = None
+    price = None
+    quantity = None
+    if 'retailerId' in data:
+        retailerId = data['retailerId']
+    if 'foodId' in data:
+        foodId = data['foodId']
+    if 'foodName' in data:
+        foodName = data['foodName']
+    if 'price' in data:
+        price = data['price']
+    if 'quantity' in data:
+        quantity = data['quantity']
     if retailerId is None or foodId is None or foodName is None or price is None or quantity is None:
         response = { 'requestId' : ''}
         s = 501
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
     curr_uuid =  str(uuid.uuid4())
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='35.196.120.94'))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='34.83.78.145'))
     channel = connection.channel()
     channel.exchange_declare(exchange='toWorker', exchange_type='direct')
-    q_data = {'requestId': curr_uuid, 'retailerId': retailerId, 'foodId': fodId, 'foodName': foodName, 'price': price, 'quantity':quantity}
+    q_data = {'requestId': curr_uuid, 'retailerId': retailerId, 'foodId': foodId, 'foodName': foodName, 'price': price, 'quantity':quantity}
     channel.basic_publish(exchange='toWorker', routing_key='retailer_demand', body=q_data,properties=pika.BasicProperties(delivery_mode = 2))
     connection.close()
     response = {'requestId': curr_uuid}
@@ -121,19 +139,28 @@ def producerDemand():
         s = 501
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
-    producerId = data['producerId']
-    foodId = data['foodId']
-    quantity = data['quantity']
-    if producerId is None or foodId is None or quantity is None:
+    producerId = None
+    foodId = None
+    foodName = None
+    quantity = None
+    if 'producerId' in data:
+        producerId = data['producerId']
+    if 'foodId' in data:
+        foodId = data['foodId']
+    if 'foodName' in data:
+        foodName = data['foodName']
+    if 'quantity' in data:
+        quantity = data['quantity']
+    if producerId is None or foodId is None or quantity is None or foodName is None:
         response = { 'requestId' : ''}
         s = 501
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
     curr_uuid =  str(uuid.uuid4())
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='35.196.120.94'))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='34.83.78.145'))
     channel = connection.channel()
     channel.exchange_declare(exchange='toWorker', exchange_type='direct')
-    q_data = {'requestId': curr_uuid, 'producerId': producerId, 'foodId': fodId, 'foodName': foodName, 'quantity':quantity}
+    q_data = {'requestId': curr_uuid, 'producerId': producerId, 'foodId': foodId, 'foodName': foodName, 'quantity':quantity}
     channel.basic_publish(exchange='toWorker', routing_key='producer_demand', body=q_data,properties=pika.BasicProperties(delivery_mode = 2))
     connection.close()
     response = {'requestId': curr_uuid}
@@ -343,17 +370,17 @@ def addFood():
     return Response(response=response_pickled, status=s, mimetype="application/json")
 
 
-@app.route('/api/user/food', methods=['GET'])                                                                              
+@app.route('/api/user/food/all', methods=['GET'])                                                                              
 def getFood():
     global cursor
     global connection
     foodName = request.args.get('foodName')
     if foodName is None:
-        response = [{'foodid' : '', 'foodName': ''}]
+        response = [{'foodId' : '', 'foodName': ''}]
         s = 501
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
-    foodName = foodName+'%'
+    foodName = '%'+foodName+'%'
     query = """select * from food where name like %s and isActive = 1"""
     try:
         cursor.execute(query,(foodName))
@@ -375,8 +402,54 @@ def getFood():
     return Response(response=response_pickled, status=s, mimetype="application/json")
 
 
+@app.route('/api/user/food', methods=['GET'])                                                                              
+def getFood():
+    global cursor
+    global connection
+    foodName = request.args.get('foodName')
+    foodId = request.args.get('foodId')
+    if foodName is None and foodId is None:
+        response = {'foodId' : '', 'foodName': ''}
+        s = 501
+        response_pickled = jsonpickle.encode(response)
+        return Response(response=response_pickled, status=s, mimetype="application/json")
+    query = None
+    word
+    if foodId is None:
+        query = """select * from food where name = %s and isActive = 1"""
+        word = foodName
+    else:
+        query = """select * from food where id = %s and isActive = 1"""
+        word = foodId
+    r = redis.Redis(host='35.243.192.240', port=6379, db=1)
+    if r.exists(word):
+        temp = r.get(word)
+        foodId = temp.split(":")[0]
+        foodName = temp.split(":")[1]
+        response = {'foodId': foodId, 'foodName': foodName}
+        s = 200
+    else:
+        try:
+            cursor.execute(query,(word))
+            results = cursor.fetchall()
+            foodId = results[0][0]
+            foodName = results[0][1]
+            createdAt = results[0][2]
+            response = {'foodId': foodId, 'foodName': foodName}
+            s = 200
+            temp = foodId + ":" + foodName
+            r.set(word,temp)
+        except MySQLError as e:
+            curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
+            logging.warning(curr_err)
+            response = {'foodId': '', 'foodName': ''}
+            s = 501
+    response_pickled = jsonpickle.encode(response)
+    return Response(response=response_pickled, status=s, mimetype="application/json")
+
+
 if __name__ == '__main__':
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='35.247.11.169'))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='34.83.78.145'))
     channel = connection.channel()
     channel.exchange_declare(exchange='toWorker', exchange_type='direct')
     result = channel.queue_declare(queue='', exclusive=True)

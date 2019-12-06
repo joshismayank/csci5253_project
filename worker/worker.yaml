@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: q-handler-server
-          image: gcr.io/assignments-252803/worker-server-image-1
+          image: gcr.io/assignments-252803/worker-server-image-9
           env:
             - name: MYSQL_DB_HOST
               value: 127.0.0.1:3306

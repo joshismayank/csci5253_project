@@ -5,6 +5,8 @@ import uuid
 import pymysql
 import logging
 import google.cloud.logging
+import redis
+import pickle
 
 app = Flask(__name__)
 
@@ -122,7 +124,7 @@ def retailerDemand():
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='34.83.78.145'))
     channel = connection.channel()
     channel.exchange_declare(exchange='toWorker', exchange_type='direct')
-    q_data = {'requestId': curr_uuid, 'retailerId': retailerId, 'foodId': foodId, 'foodName': foodName, 'price': price, 'quantity':quantity}
+    q_data = pickle.dumps({'requestId': curr_uuid, 'retailerId': retailerId, 'foodId': foodId, 'foodName': foodName, 'price': price, 'quantity':quantity})
     channel.basic_publish(exchange='toWorker', routing_key='retailer_demand', body=q_data,properties=pika.BasicProperties(delivery_mode = 2))
     connection.close()
     response = {'requestId': curr_uuid}
@@ -160,7 +162,7 @@ def producerDemand():
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='34.83.78.145'))
     channel = connection.channel()
     channel.exchange_declare(exchange='toWorker', exchange_type='direct')
-    q_data = {'requestId': curr_uuid, 'producerId': producerId, 'foodId': foodId, 'foodName': foodName, 'quantity':quantity}
+    q_data = pickle.dumps({'requestId': curr_uuid, 'producerId': producerId, 'foodId': foodId, 'foodName': foodName, 'quantity':quantity})
     channel.basic_publish(exchange='toWorker', routing_key='producer_demand', body=q_data,properties=pika.BasicProperties(delivery_mode = 2))
     connection.close()
     response = {'requestId': curr_uuid}
@@ -371,7 +373,7 @@ def addFood():
 
 
 @app.route('/api/user/food/all', methods=['GET'])                                                                              
-def getFood():
+def getAllFood():
     global cursor
     global connection
     foodName = request.args.get('foodName')
@@ -421,7 +423,7 @@ def getFood():
     else:
         query = """select * from food where id = %s and isActive = 1"""
         word = foodId
-    r = redis.Redis(host='35.243.192.240', port=6379, db=1)
+    r = redis.Redis(host='35.247.11.169', port=6379, db=1)
     if r.exists(word):
         temp = r.get(word)
         foodId = temp.split(":")[0]

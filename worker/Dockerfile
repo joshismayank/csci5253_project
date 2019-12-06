@@ -9,5 +9,7 @@ RUN pip3 install pymysql
 RUN pip3 install google-cloud-logging
 COPY producer-worker.py /
 COPY retailer-worker.py /
-CMD ["nohup python3 producer-worker.py &"]
-ENTRYPOINT python3 retailer-worker.py
+COPY script.sh /
+ENTRYPOINT /bin/bash script.sh
+#CMD ["nohup python3 retailer-worker.py &"]
+#ENTRYPOINT python3 producer-worker.py

@@ -2,6 +2,7 @@ import pika
 import pymysql
 import logging
 import google.cloud.logging
+import pickle
 
 connection_rabbit = pika.BlockingConnection(pika.ConnectionParameters(host='34.83.78.145'))
 channel_rabbit = connection_rabbit.channel()
@@ -17,6 +18,8 @@ connection = pymysql.connect(host='127.0.0.1',user='cluster_user',password='data
 cursor = connection.cursor()
 
 def callback(ch, method, properties, body):
+    logging.warning("reached callback - retailer")
+    body = pickle.loads(body)
     global connection
     global cursor
     requestId = body['requestId']

@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: web-server
-          image: gcr.io/assignments-252803/rest-server-image-9
+          image: gcr.io/assignments-252803/rest-server-image-14
           env:
             - name: MYSQL_DB_HOST
               value: 127.0.0.1:3306

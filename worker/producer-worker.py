@@ -27,8 +27,6 @@ def callback(ch, method, properties, body):
     foodId = body['foodId']
     foodName = body['foodName']
     quantity = float(body['quantity'])
-    logging.warning("quantity")
-    logging.warning(quantity)
     amount = 0
     query1 = """select * from acceptedRequests where foodId = %s and isActive = 1 and requestBy = %s and quantityRemaining > 0 order by price DESC"""
     query2 = """insert into acceptedRequests(foodId,foodName,quantity,price,requestBy,requestUserId,requestId) values(%s,%s,%s,%s,%s,%s,%s)"""
@@ -38,47 +36,28 @@ def callback(ch, method, properties, body):
         results = cursor.fetchall()
         for row in results:
             curr_quantity = row[9]
-            logging.warning("curr_quantity")
-            logging.warning(curr_quantity)
             curr_price = row[3]
             curr_requestId = row[7]
-            logging.warning("quantity")
-            logging.warning(quantity)
             if quantity == 0:
-                logging.warning("breaking")
                 break
             elif quantity <= curr_quantity:
-                logging.warning("loop1")
                 amount = amount + quantity*curr_price
-                logging.warning("amount")
-                logging.warning(amount)
                 curr_quantity = curr_quantity-quantity
-                logging.warning("curr_quantity")
-                logging.warning(curr_quantity)
                 quantity = 0
                 try:
-                    logging.warning("commiting loop1")
                     cursor.execute(query3,(curr_quantity,curr_requestId))
                     connection.commit()
-                    logging.warning("commited loop1")
                 except MySQLError as e:
                     curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
-                    logging.warning(curr_err)
                     connection.rollback()
+                    logging.warning(curr_err)
             else:
-                logging.warning("loop2")
                 amount = amount + curr_price*curr_quantity
-                logging.warning("amount")
-                logging.warning(amount)
                 quantity = quantity - curr_quantity
-                logging.warning("quantity")
-                logging.warning(quantity)
                 curr_quantity = 0
                 try:
-                    logging.warning("commiting loop2")
                     cursor.execute(query3,(curr_quantity,curr_requestId))
                     connection.commit()
-                    logging.warning("commited loop2")
                 except MySQLError as e:
                     curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
                     logging.warning(curr_err)
@@ -87,24 +66,14 @@ def callback(ch, method, properties, body):
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         connection.rollback()
-    logging.warning("quantity_i")
-    logging.warning(quantity)
     quantity = float(body['quantity']) - quantity
-    logging.warning("quantity_f")
-    logging.warning(quantity)
-    logging.warning("amount")
-    logging.warning(amount)
     if quantity == 0:
         price = 0
     else:
         price = amount/quantity
-    logging.warning("price")
-    logging.warning(price)
     try:
-        logging.warning("final query")
         cursor.execute(query2,(foodId,foodName,quantity,price,"p",producerId,requestId))
         connection.commit()
-        logging.warning("fianl query commited")
     except MySQLError as e:
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)

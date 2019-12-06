@@ -44,7 +44,7 @@ def retailerOnboard():
         connection.commit()
         response = {'retailerId': curr_uuid}
         s = 200
-    except MySQLError as e:
+    except Exception as e:
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         connection.rollback()
@@ -82,7 +82,7 @@ def producerOnboard():
         connection.commit()
         response = {'producerId': curr_uuid}
         s = 200
-    except MySQLError as e:
+    except Exception as e:
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         connection.rollback()
@@ -196,7 +196,7 @@ def getRetailerDemand():
             temp_res = {'foodId': foodId, 'foodName': foodName, 'quantity': quantity, 'price': price, 'createdAt': createdAt}
             response.append(temp_res)
         s = 200
-    except MySQLError as e:
+    except Exception as e:
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         response = [{'foodId': '', 'foodName': '', 'quantity': '', 'price': '', 'createdAt': ''}]
@@ -230,7 +230,7 @@ def getProducerDemand():
             temp_res = {'foodId': foodId, 'foodName': foodName, 'quantity': quantity, 'price': price, 'createdAt': createdAt}
             response.append(temp_res)
         s = 200
-    except MySQLError as e:
+    except Exception as e:
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         response = [{'foodId': '', 'foodName': '', 'quantity': '', 'price': '', 'createdAt': ''}]
@@ -255,7 +255,7 @@ def getRetailers():
             temp_res = {'retailerId': retailerId, 'name': name, 'location': location}
             response.append(temp_res)
         s = 200
-    except MySQLError as e:
+    except Exception as e:
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         response = [{'retailerId': '', 'name': '', 'location': ''}]
@@ -280,7 +280,7 @@ def getProducers():
             temp_res = {'producerId': producerId, 'name': name, 'location': location}
             response.append(temp_res)
         s = 200
-    except MySQLError as e:
+    except Exception as e:
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         response = [{'producerId': '', 'name': '', 'location': ''}]
@@ -293,7 +293,7 @@ def getProducers():
 def getRetailerDemands():
     global cursor
     global connection
-    query = """select * from acceptedRequests where requestBy = 'r' and isActive = 1"""
+    query = """select * from acceptedRequests where requestBy = 'r' and isActive = 1 and quantityRemaining > 0"""
     try:
         cursor.execute(query)
         results = cursor.fetchall()
@@ -305,10 +305,11 @@ def getRetailerDemands():
             price = row[3]
             createdAt = row[5]
             retailerId = row[8]
-            temp_res = {'foodId': foodId, 'foodName': foodName, 'quantity': quantity, 'price': price, 'retailerId':retailerId, 'createdAt': createdAt}
+            quantityRemaining = row[9]
+            temp_res = {'foodId': foodId, 'foodName': foodName, 'quantity': quantity, 'quantityRemaining': quantityRemaining, 'price': price, 'retailerId':retailerId, 'createdAt': createdAt}
             response.append(temp_res)
         s = 200
-    except MySQLError as e:
+    except Exception as e:
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         response = [{'foodId': '', 'foodName': '', 'quantity': '', 'price': '', 'retailerId': '', 'createdAt': ''}]
@@ -336,7 +337,7 @@ def getProducerDemands():
             temp_res = {'foodId': foodId, 'foodName': foodName, 'quantity': quantity, 'price': price, 'producerId':producerId, 'createdAt': createdAt}
             response.append(temp_res)
         s = 200
-    except MySQLError as e:
+    except Exception as e:
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         response = [{'foodId': '', 'foodName': '', 'quantity': '', 'price': '', 'producerId': '', 'createdAt': ''}]
@@ -362,7 +363,7 @@ def addFood():
         connection.commit()
         response = {'foodId': curr_uuid}
         s = 200
-    except MySQLError as e:
+    except Exception as e:
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         connection.rollback()
@@ -376,16 +377,9 @@ def addFood():
 def getAllFood():
     global cursor
     global connection
-    foodName = request.args.get('foodName')
-    if foodName is None:
-        response = [{'foodId' : '', 'foodName': ''}]
-        s = 501
-        response_pickled = jsonpickle.encode(response)
-        return Response(response=response_pickled, status=s, mimetype="application/json")
-    foodName = '%'+foodName+'%'
-    query = """select * from food where name like %s and isActive = 1"""
+    query = """select * from food where isActive = 1"""
     try:
-        cursor.execute(query,(foodName))
+        cursor.execute(query)
         results = cursor.fetchall()
         response = []
         for row in results:
@@ -395,7 +389,7 @@ def getAllFood():
             temp_res = {'foodId': foodId, 'foodName': foodName, 'createdAt': createdAt}
             response.append(temp_res)
         s = 200
-    except MySQLError as e:
+    except Exception as e:
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         response = [{'foodId': '', 'foodName': '', 'createdAt': ''}]
@@ -416,7 +410,7 @@ def getFood():
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
     query = None
-    word
+    word = None
     if foodId is None:
         query = """select * from food where name = %s and isActive = 1"""
         word = foodName
@@ -426,6 +420,7 @@ def getFood():
     r = redis.Redis(host='35.247.11.169', port=6379, db=1)
     if r.exists(word):
         temp = r.get(word)
+        temp = temp.decode("utf-8","replace")
         foodId = temp.split(":")[0]
         foodName = temp.split(":")[1]
         response = {'foodId': foodId, 'foodName': foodName}
@@ -440,8 +435,16 @@ def getFood():
             response = {'foodId': foodId, 'foodName': foodName}
             s = 200
             temp = foodId + ":" + foodName
+            temp = temp.encode("utf-8")
             r.set(word,temp)
-        except MySQLError as e:
+            if r.exists("total"):
+                tot = r.get("total")+1
+                r.set("total",tot)
+                if tot > 200:
+                    r.flushdb()
+            else:
+                r.set("total",1)
+        except Exception as e:
             curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
             logging.warning(curr_err)
             response = {'foodId': '', 'foodName': ''}

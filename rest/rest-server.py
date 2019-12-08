@@ -191,8 +191,8 @@ def getRetailerDemand():
     query = """select * from acceptedRequests where requestBy = 'r' and isActive = 1 and requestUserId = %s"""
     try:
         cursor.execute(query,(retailerId))
-        connection.close()
         results = cursor.fetchall()
+        connection.close()
         response = []
         for row in results:
             foodId = row[0]
@@ -227,8 +227,8 @@ def getProducerDemand():
     query = """select * from acceptedRequests where requestBy = 'p' and isActive = 1 and requestUserId = %s"""
     try:
         cursor.execute(query,(producerId))
-        connection.close()
         results = cursor.fetchall()
+        connection.close()
         response = []
         for row in results:
             foodId = row[0]
@@ -256,8 +256,8 @@ def getRetailers():
     query = """select * from retailer where isActive = 1"""
     try:
         cursor.execute(query)
-        connection.close()
         results = cursor.fetchall()
+        connection.close()
         response = []
         for row in results:
             retailerId = row[0]
@@ -283,8 +283,8 @@ def getProducers():
     query = """select * from producer where isActive = 1"""
     try:
         cursor.execute(query)
-        connection.close()
         results = cursor.fetchall()
+        connection.close()
         response = []
         for row in results:
             producerId = row[0]
@@ -310,8 +310,8 @@ def getRetailerDemands():
     query = """select * from acceptedRequests where requestBy = 'r' and isActive = 1 and quantityRemaining > 0"""
     try:
         cursor.execute(query)
-        connection.close()
         results = cursor.fetchall()
+        connection.close()
         response = []
         for row in results:
             foodId = row[0]
@@ -341,8 +341,8 @@ def getProducerDemands():
     query = """select * from acceptedRequests where requestBy = 'p' and isActive = 1"""
     try:
         cursor.execute(query)
-        connection.close()
         results = cursor.fetchall()
+        connection.close()
         response = []
         for row in results:
             foodId = row[0]
@@ -378,15 +378,15 @@ def addFood():
     query = """insert into food(id,name) values(%s,%s)"""
     try:
         cursor.execute(query,(curr_uuid,foodName))
-        connection.close()
         connection.commit()
+        connection.close()
         response = {'foodId': curr_uuid}
         s = 200
     except Exception as e:
-        connection.close()
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         connection.rollback()
+        connection.close()
         response = {'foodId': ''}
         s = 501
     response_pickled = jsonpickle.encode(response)
@@ -400,8 +400,8 @@ def getAllFood():
     query = """select * from food where isActive = 1"""
     try:
         cursor.execute(query)
-        connection.close()
         results = cursor.fetchall()
+        connection.close()
         response = []
         for row in results:
             foodId = row[0]
@@ -450,8 +450,8 @@ def getFood():
     else:
         try:
             cursor.execute(query,(word))
-            connection.close()
             results = cursor.fetchall()
+            connection.close()
             logging.warning("got results")
             if not results:
                 response = {'foodId': '', 'foodName': ''}

@@ -14,14 +14,15 @@ queue_name = result_rabbit.method.queue
 
 channel_rabbit.queue_bind(exchange='toWorker', queue=queue_name, routing_key='retailer_demand')
 
-connection = pymysql.connect(host='127.0.0.1',user='cluster_user',password='datacenter',db='dc_project')
-cursor = connection.cursor()
+def getConnection():
+    connection = pymysql.connect(host='127.0.0.1',user='cluster_user',password='datacenter',db='dc_project')
+    return connection
 
 def callback(ch, method, properties, body):
     logging.warning("reached callback - retailer")
     body = pickle.loads(body)
-    global connection
-    global cursor
+    connection = getConnection()
+    cursor = connection.cursor()
     requestId = body['requestId']
     retailerId = body['retailerId']
     foodId = body['foodId']
@@ -32,10 +33,12 @@ def callback(ch, method, properties, body):
     try:
         cursor.execute(query,(foodId,foodName,quantity,price,"r",retailerId,requestId,quantity))
         connection.commit()
+        connection.close()
     except MySQLError as e:
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         connection.rollback()
+        connection.close()
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 

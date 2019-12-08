@@ -9,3 +9,5 @@ kubectl create secret generic cloudsql-db-credentials --from-literal=username=cl
 kubectl apply -f rest-server.yaml
 
 kubectl expose deployment rest-server --type=LoadBalancer --port 5000 --target-port 5000
+
+kubectl autoscale deployment rest-server --cpu-percent=70 --min=1 --max=20

@@ -121,7 +121,7 @@ def retailerDemand():
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
     curr_uuid =  str(uuid.uuid4())
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='34.83.78.145'))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='35.247.11.169'))
     channel = connection.channel()
     channel.exchange_declare(exchange='toWorker', exchange_type='direct')
     q_data = pickle.dumps({'requestId': curr_uuid, 'retailerId': retailerId, 'foodId': foodId, 'foodName': foodName, 'price': price, 'quantity':quantity})
@@ -159,7 +159,7 @@ def producerDemand():
         response_pickled = jsonpickle.encode(response)
         return Response(response=response_pickled, status=s, mimetype="application/json")
     curr_uuid =  str(uuid.uuid4())
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='34.83.78.145'))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='35.247.11.169'))
     channel = connection.channel()
     channel.exchange_declare(exchange='toWorker', exchange_type='direct')
     q_data = pickle.dumps({'requestId': curr_uuid, 'producerId': producerId, 'foodId': foodId, 'foodName': foodName, 'quantity':quantity})
@@ -417,7 +417,7 @@ def getFood():
     else:
         query = """select * from food where id = %s and isActive = 1"""
         word = foodId
-    r = redis.Redis(host='35.247.11.169', port=6379, db=1)
+    r = redis.Redis(host='35.203.139.73', port=6379, db=1)
     if r.exists(word):
         temp = r.get(word)
         temp = temp.decode("utf-8","replace")
@@ -429,21 +429,26 @@ def getFood():
         try:
             cursor.execute(query,(word))
             results = cursor.fetchall()
-            foodId = results[0][0]
-            foodName = results[0][1]
-            createdAt = results[0][2]
-            response = {'foodId': foodId, 'foodName': foodName}
-            s = 200
-            temp = foodId + ":" + foodName
-            temp = temp.encode("utf-8")
-            r.set(word,temp)
-            if r.exists("total"):
-                tot = r.get("total")+1
-                r.set("total",tot)
-                if tot > 200:
-                    r.flushdb()
+            logging.warning("got results")
+            if not results:
+                response = {'foodId': '', 'foodName': ''}
+                s = 200
             else:
-                r.set("total",1)
+                foodId = results[0][0]
+                foodName = results[0][1]
+                createdAt = results[0][2]
+                response = {'foodId': foodId, 'foodName': foodName}
+                s = 200
+                temp = foodId + ":" + foodName
+                temp = temp.encode("utf-8")
+                r.set(word,temp)
+                if r.exists("total"):
+                    tot = r.get("total")+1
+                    r.set("total",tot)
+                    if tot > 200:
+                        r.flushdb()
+                else:
+                    r.set("total",1)
         except Exception as e:
             curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
             logging.warning(curr_err)
@@ -454,7 +459,7 @@ def getFood():
 
 
 if __name__ == '__main__':
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='34.83.78.145'))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='35.247.11.169'))
     channel = connection.channel()
     channel.exchange_declare(exchange='toWorker', exchange_type='direct')
     result = channel.queue_declare(queue='', exclusive=True)

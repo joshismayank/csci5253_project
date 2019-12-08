@@ -5,7 +5,7 @@ import logging
 import google.cloud.logging
 import pickle
 
-connection_rabbit = pika.BlockingConnection(pika.ConnectionParameters(host='34.83.78.145'))
+connection_rabbit = pika.BlockingConnection(pika.ConnectionParameters(host='35.247.11.169'))
 channel_rabbit = connection_rabbit.channel()
 
 channel_rabbit.exchange_declare(exchange='toWorker', exchange_type='direct')

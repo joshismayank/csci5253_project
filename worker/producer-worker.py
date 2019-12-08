@@ -15,12 +15,13 @@ queue_name = result_rabbit.method.queue
 
 channel_rabbit.queue_bind(exchange='toWorker', queue=queue_name, routing_key='producer_demand')
 
-connection = pymysql.connect(host='127.0.0.1',user='cluster_user',password='datacenter',db='dc_project')
-cursor = connection.cursor()
+def getConnection():
+    connection = pymysql.connect(host='127.0.0.1',user='cluster_user',password='datacenter',db='dc_project')
+    return connection
 
 def callback(ch, method, properties, body):
-    global connection
-    global cursor
+    connection = getConnection()
+    cursor = connection.cursor()
     body = pickle.loads(body)
     requestId = body['requestId']
     producerId = body['producerId']
@@ -47,9 +48,11 @@ def callback(ch, method, properties, body):
                 try:
                     cursor.execute(query3,(curr_quantity,curr_requestId))
                     connection.commit()
+                    connection.close()
                 except MySQLError as e:
                     curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
                     connection.rollback()
+                    connection.close()
                     logging.warning(curr_err)
             else:
                 amount = amount + curr_price*curr_quantity
@@ -58,26 +61,33 @@ def callback(ch, method, properties, body):
                 try:
                     cursor.execute(query3,(curr_quantity,curr_requestId))
                     connection.commit()
+                    connection.close()
                 except MySQLError as e:
                     curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
                     logging.warning(curr_err)
                     connection.rollback()
+                    connection.close()
     except MySQLError as e:
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         connection.rollback()
+        connection.close()
     quantity = float(body['quantity']) - quantity
     if quantity == 0:
         price = 0
     else:
         price = amount/quantity
     try:
+        connection = getConnection()
+        cursor = connection.cursor()
         cursor.execute(query2,(foodId,foodName,quantity,price,"p",producerId,requestId))
         connection.commit()
+        connection.close()
     except MySQLError as e:
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         connection.rollback()
+        connection.close()
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 

@@ -13,13 +13,15 @@ app = Flask(__name__)
 client = google.cloud.logging.Client()
 client.setup_logging()
 
-connection = pymysql.connect(host='127.0.0.1',user='cluster_user',password='datacenter',db='dc_project')
-cursor = connection.cursor()
+def getConnection():
+    connection = pymysql.connect(host='127.0.0.1',user='cluster_user',password='datacenter',db='dc_project')
+    return connection
+
 
 @app.route('/api/retailer/onboard', methods=['POST'])                                                                              
 def retailerOnboard():
-    global cursor
-    global connection
+    connection = getConnection()
+    cursor = connection.cursor()
     data = request.get_json(silent=True)
     if data is None:
         response = { 'retailerId' : ''}
@@ -42,12 +44,14 @@ def retailerOnboard():
     try:
         cursor.execute(query,(curr_uuid,name,location))
         connection.commit()
+        connection.close()
         response = {'retailerId': curr_uuid}
         s = 200
     except Exception as e:
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         connection.rollback()
+        connection.close()
         response = {'retailerId': ''}
         s = 501
     response_pickled = jsonpickle.encode(response)
@@ -56,8 +60,8 @@ def retailerOnboard():
 
 @app.route('/api/producer/onboard', methods=['POST'])                                                                              
 def producerOnboard():
-    global cursor
-    global connection
+    connection = getConnection()
+    cursor = connection.cursor()
     data = request.get_json(silent=True)
     if data is None:
         response = { 'producerId' : ''}
@@ -80,12 +84,14 @@ def producerOnboard():
     try:
         cursor.execute(query,(curr_uuid,name,location))
         connection.commit()
+        connection.close()
         response = {'producerId': curr_uuid}
         s = 200
     except Exception as e:
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         connection.rollback()
+        connection.close()
         response = {'producerId': ''}
         s = 501
     response_pickled = jsonpickle.encode(response)
@@ -173,8 +179,8 @@ def producerDemand():
 
 @app.route('/api/retailer/demand', methods=['GET'])                                                                              
 def getRetailerDemand():
-    global cursor
-    global connection
+    connection = getConnection()
+    cursor = connection.cursor()
     retailerId = request.args.get('retailerId')
     if retailerId is None:
         response = { 'foodId' : '', 'foodName': '', 'price': '', 'quantity': '', 'timestamp': ''}
@@ -185,6 +191,7 @@ def getRetailerDemand():
     query = """select * from acceptedRequests where requestBy = 'r' and isActive = 1 and requestUserId = %s"""
     try:
         cursor.execute(query,(retailerId))
+        connection.close()
         results = cursor.fetchall()
         response = []
         for row in results:
@@ -197,6 +204,7 @@ def getRetailerDemand():
             response.append(temp_res)
         s = 200
     except Exception as e:
+        connection.close()
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         response = [{'foodId': '', 'foodName': '', 'quantity': '', 'price': '', 'createdAt': ''}]
@@ -207,8 +215,8 @@ def getRetailerDemand():
 
 @app.route('/api/producer/demand', methods=['GET'])                                                                              
 def getProducerDemand():
-    global cursor
-    global connection
+    connection = getConnection()
+    cursor = connection.cursor()
     producerId = request.args.get('producerId')
     if producerId is None:
         response = { 'foodId' : '', 'foodName': '', 'price': '', 'quantity': '', 'timestamp': ''}
@@ -219,6 +227,7 @@ def getProducerDemand():
     query = """select * from acceptedRequests where requestBy = 'p' and isActive = 1 and requestUserId = %s"""
     try:
         cursor.execute(query,(producerId))
+        connection.close()
         results = cursor.fetchall()
         response = []
         for row in results:
@@ -231,6 +240,7 @@ def getProducerDemand():
             response.append(temp_res)
         s = 200
     except Exception as e:
+        connection.close()
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         response = [{'foodId': '', 'foodName': '', 'quantity': '', 'price': '', 'createdAt': ''}]
@@ -241,11 +251,12 @@ def getProducerDemand():
 
 @app.route('/api/admin/retailer/all', methods=['GET'])                                                                              
 def getRetailers():
-    global cursor
-    global connection
+    connection = getConnection()
+    cursor = connection.cursor()
     query = """select * from retailer where isActive = 1"""
     try:
         cursor.execute(query)
+        connection.close()
         results = cursor.fetchall()
         response = []
         for row in results:
@@ -256,6 +267,7 @@ def getRetailers():
             response.append(temp_res)
         s = 200
     except Exception as e:
+        connection.close()
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         response = [{'retailerId': '', 'name': '', 'location': ''}]
@@ -266,11 +278,12 @@ def getRetailers():
 
 @app.route('/api/admin/producer/all', methods=['GET'])                                                                              
 def getProducers():
-    global cursor
-    global connection
+    connection = getConnection()
+    cursor = connection.cursor()
     query = """select * from producer where isActive = 1"""
     try:
         cursor.execute(query)
+        connection.close()
         results = cursor.fetchall()
         response = []
         for row in results:
@@ -281,6 +294,7 @@ def getProducers():
             response.append(temp_res)
         s = 200
     except Exception as e:
+        connection.close()
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         response = [{'producerId': '', 'name': '', 'location': ''}]
@@ -291,11 +305,12 @@ def getProducers():
 
 @app.route('/api/admin/retailer/demand', methods=['GET'])                                                                              
 def getRetailerDemands():
-    global cursor
-    global connection
+    connection = getConnection()
+    cursor = connection.cursor()
     query = """select * from acceptedRequests where requestBy = 'r' and isActive = 1 and quantityRemaining > 0"""
     try:
         cursor.execute(query)
+        connection.close()
         results = cursor.fetchall()
         response = []
         for row in results:
@@ -310,6 +325,7 @@ def getRetailerDemands():
             response.append(temp_res)
         s = 200
     except Exception as e:
+        connection.close()
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         response = [{'foodId': '', 'foodName': '', 'quantity': '', 'price': '', 'retailerId': '', 'createdAt': ''}]
@@ -320,11 +336,12 @@ def getRetailerDemands():
 
 @app.route('/api/admin/producer/demand', methods=['GET'])                                                                              
 def getProducerDemands():
-    global cursor
-    global connection
+    connection = getConnection()
+    cursor = connection.cursor()
     query = """select * from acceptedRequests where requestBy = 'p' and isActive = 1"""
     try:
         cursor.execute(query)
+        connection.close()
         results = cursor.fetchall()
         response = []
         for row in results:
@@ -338,6 +355,7 @@ def getProducerDemands():
             response.append(temp_res)
         s = 200
     except Exception as e:
+        connection.close()
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         response = [{'foodId': '', 'foodName': '', 'quantity': '', 'price': '', 'producerId': '', 'createdAt': ''}]
@@ -348,8 +366,8 @@ def getProducerDemands():
 
 @app.route('/api/admin/food', methods=['POST'])                                                                              
 def addFood():
-    global cursor
-    global connection
+    connection = getConnection()
+    cursor = connection.cursor()
     foodName = request.args.get('foodName')
     if foodName is None:
         response = {'foodId': ''}
@@ -360,10 +378,12 @@ def addFood():
     query = """insert into food(id,name) values(%s,%s)"""
     try:
         cursor.execute(query,(curr_uuid,foodName))
+        connection.close()
         connection.commit()
         response = {'foodId': curr_uuid}
         s = 200
     except Exception as e:
+        connection.close()
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         connection.rollback()
@@ -375,11 +395,12 @@ def addFood():
 
 @app.route('/api/user/food/all', methods=['GET'])                                                                              
 def getAllFood():
-    global cursor
-    global connection
+    connection = getConnection()
+    cursor = connection.cursor()
     query = """select * from food where isActive = 1"""
     try:
         cursor.execute(query)
+        connection.close()
         results = cursor.fetchall()
         response = []
         for row in results:
@@ -390,6 +411,7 @@ def getAllFood():
             response.append(temp_res)
         s = 200
     except Exception as e:
+        connection.close()
         curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
         logging.warning(curr_err)
         response = [{'foodId': '', 'foodName': '', 'createdAt': ''}]
@@ -400,8 +422,8 @@ def getAllFood():
 
 @app.route('/api/user/food', methods=['GET'])                                                                              
 def getFood():
-    global cursor
-    global connection
+    connection = getConnection()
+    cursor = connection.cursor()
     foodName = request.args.get('foodName')
     foodId = request.args.get('foodId')
     if foodName is None and foodId is None:
@@ -428,6 +450,7 @@ def getFood():
     else:
         try:
             cursor.execute(query,(word))
+            connection.close()
             results = cursor.fetchall()
             logging.warning("got results")
             if not results:
@@ -450,6 +473,7 @@ def getFood():
                 else:
                     r.set("total",1)
         except Exception as e:
+            connection.close()
             curr_err = 'Got error {!r}, errno is {}'.format(e, e.args[0])
             logging.warning(curr_err)
             response = {'foodId': '', 'foodName': ''}
